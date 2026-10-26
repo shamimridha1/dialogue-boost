@@ -25,7 +25,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y mingw-w64 nsis
       - name: Build plugin + installer
         run: |
-          ./build.sh
+          bash build.sh
           mkdir -p dist
           (cd installer/win && makensis -V2 DialogueBoost.nsi)
       - uses: actions/upload-artifact@v4
@@ -43,7 +43,7 @@ jobs:
           git -C vst3sdk checkout $SDK_COMMIT
           git -C vst3sdk submodule update --init --recursive
       - name: Build plugin + installer
-        run: ./build_mac.sh
+        run: bash build_mac.sh
       - name: Validate plugin with Steinberg validator
         run: |
           cmake -S vst3sdk -B sdkbuild -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF -DSMTG_ADD_VST3_PLUGINS_SAMPLES=OFF -DSMTG_ADD_VST3_HOSTING_SAMPLES=ON -DCMAKE_BUILD_TYPE=Release
