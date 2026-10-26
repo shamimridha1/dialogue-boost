@@ -1,0 +1,87 @@
+name: Build installers
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SDK_COMMIT: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get VST3 SDK
+        run: |
+          git clone --recurse-submodules https://github.com/steinbergmedia/vst3sdk.git vst3sdk
+          git -C vst3sdk checkout $SDK_COMMIT
+          git -C vst3sdk submodule update --init --recursive
+      - name: Tools
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64 nsis
+      - name: Build plugin + installer
+        run: |
+          ./build.sh
+          mkdir -p dist
+          (cd installer/win && makensis -V2 DialogueBoost.nsi)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.exe
+
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get VST3 SDK
+        run: |
+          git clone --recurse-submodules https://github.com/steinbergmedia/vst3sdk.git vst3sdk
+          git -C vst3sdk checkout $SDK_COMMIT
+          git -C vst3sdk submodule update --init --recursive
+      - name: Build plugin + installer
+        run: ./build_mac.sh
+      - name: Validate plugin with Steinberg validator
+        run: |
+          cmake -S vst3sdk -B sdkbuild -DSMTG_ENABLE_VSTGUI_SUPPORT=OFF -DSMTG_ADD_VST3_PLUGINS_SAMPLES=OFF -DSMTG_ADD_VST3_HOSTING_SAMPLES=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build sdkbuild --target validator --config Release -j 4
+          VAL=$(find sdkbuild -type f -name validator -perm -u+x | head -1)
+          echo "validator: $VAL"
+          "$VAL" "build-mac/Dialogue Boost.vst3" | tee validator.log
+          grep -E "Result: [0-9]+ tests passed, 0 tests failed" validator.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: |
+            dist/*.pkg
+            validator.log
+
+  release:
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+      - name: Publish release v1.0.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete v1.0.0 --yes --cleanup-tag || true
+          gh release create v1.0.0 out/windows/*.exe out/mac/*.pkg \
+            --title "Dialogue Boost 1.0.0" \
+            --notes "Louder, clearer dialogue without clipping. VST3 plugin for DaVinci Resolve. Windows: run the Setup.exe. Mac: right-click the .pkg > Open (unsigned)."
+      - name: Store builds on 'builds' branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git checkout --orphan builds
+          git rm -rf . >/dev/null
+          cp out/windows/*.exe out/mac/*.pkg out/mac/validator.log .
+          git add -A
+          git commit -m "builds for ${GITHUB_SHA}"
+          git push -f origin builds

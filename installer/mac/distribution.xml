@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>Dialogue Boost</title>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    <options customize="never" require-scripts="false" hostArchitectures="arm64,x86_64"/>
+    <domains enable_localSystem="true"/>
+    <choices-outline>
+        <line choice="default"/>
+    </choices-outline>
+    <choice id="default" title="Dialogue Boost VST3">
+        <pkg-ref id="com.abid.dialogueboost.vst3"/>
+    </choice>
+    <pkg-ref id="com.abid.dialogueboost.vst3" version="1.0.0" onConclusion="none">component.pkg</pkg-ref>
+</installer-gui-script>

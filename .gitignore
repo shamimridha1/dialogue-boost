@@ -1,0 +1,6 @@
+vst3sdk/
+build/
+build-mac/
+sdkbuild/
+dist/
+test/t
