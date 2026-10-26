@@ -72,7 +72,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete v1.0.0 --yes --cleanup-tag || true
-          gh release create v1.0.0 out/windows/*.exe out/mac/*.pkg \
+          find out -type f
+          gh release create v1.0.0 $(find out -name "*.exe") $(find out -name "*.pkg") \
             --title "Dialogue Boost 1.0.0" \
             --notes "Louder, clearer dialogue without clipping. VST3 plugin for DaVinci Resolve. Windows: run the Setup.exe. Mac: right-click the .pkg > Open (unsigned)."
       - name: Store builds on 'builds' branch
@@ -81,7 +82,8 @@ jobs:
           git config user.email "actions@github.com"
           git checkout --orphan builds
           git rm -rf . >/dev/null
-          cp out/windows/*.exe out/mac/*.pkg out/mac/validator.log .
+          find out -type f \( -name "*.exe" -o -name "*.pkg" -o -name "validator.log" \) -exec cp {} . \;
+          rm -rf out
           git add -A
           git commit -m "builds for ${GITHUB_SHA}"
           git push -f origin builds
